@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Admin - Connexion</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="container">
+    <div class="brand">Cabinet IT — Admin</div>
+    <nav class="nav">
+      <a href="/">Retour site</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <div class="card" style="max-width: 520px; margin: 0 auto;">
+    <h1>Connexion</h1>
+    <p class="small">Accès réservé à l’administrateur.</p>
+
+    <form method="POST" action="/auth/login">
+      <label>Email</label>
+      <input type="email" name="email" required>
+
+      <div style="height: 12px;"></div>
+
+      <label>Mot de passe</label>
+      <input type="password" name="password" required>
+
+      <div style="height: 14px;"></div>
+
+      <button class="btn" type="submit">Se connecter</button>
+    </form>
+  </div>
+</main>
+
+</body>
+</html>
+
