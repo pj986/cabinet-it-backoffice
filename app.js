@@ -5,42 +5,53 @@ const path = require('path');
 require('./config/db');
 
 const session = require('express-session');
-
+const csrf = require('csurf'); // ← IMPORTANT
 
 const app = express();
 
-// Middleware
+// Body parser
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Fichiers statiques (css, js front, images)
+// Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// SESSION (DOIT être avant CSRF)
 app.use(session({
-  secret: 'change-moi-en-une-phrase-longue',
+  secret: process.env.SESSION_SECRET || 'phrase-secrete-longue',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: true
-    // secure: true, // à activer seulement en HTTPS
+    httpOnly: true,
+    maxAge: 30 * 60 * 1000
   }
 }));
 
+// 🔐 CSRF DOIT être après session
+app.use(csrf());
 
 // Routes
-const publicRoutes = require('./routes/publicRoutes');
-app.use('/', publicRoutes);
+app.use('/', require('./routes/publicRoutes'));
+app.use('/admin', require('./routes/adminRoutes'));
+app.use('/auth', require('./routes/authRoutes'));
 
-const adminRoutes = require('./routes/adminRoutes');
-app.use('/admin', adminRoutes);
+// 404
+app.use((req, res) => {
+  res.status(404).send('Page introuvable');
+});
 
-const authRoutes = require('./routes/authRoutes');
-app.use('/auth', authRoutes);
+// Gestion erreur CSRF
+app.use((err, req, res, next) => {
 
-// Lancement serveur
+  if (err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).send('Formulaire invalide ou session expirée.');
+  }
+
+  console.error(err);
+  res.status(500).send('Erreur serveur');
+});
+
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur http://localhost:${PORT}`);
 });
-

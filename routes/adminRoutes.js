@@ -1,23 +1,18 @@
 const express = require('express');
 const router = express.Router();
+
+const { requireAdmin } = require('../middleware/authMiddleware');
 const adminController = require('../controllers/adminController');
-const requireAuth = require('../middleware/authMiddleware');
 
-router.get('/messages', requireAuth, adminController.messagesPage);
-router.post('/messages/delete/:id', requireAuth, adminController.deleteMessage);
+router.get('/api/unread-count', requireAdmin, adminController.getUnreadCount);
 
-router.get('/services', requireAuth, adminController.servicesPage);
-router.get('/services/new', requireAuth, adminController.newServicePage);
-router.post('/services/new', requireAuth, adminController.createService);
+router.get('/messages', adminController.messagesPage);
+router.post('/messages/:id/read', adminController.markMessageRead);
+router.post('/messages/:id/delete', adminController.deleteMessage);
 
-router.get('/services/edit/:id', requireAuth, adminController.editServicePage);
-router.post('/services/edit/:id', requireAuth, adminController.updateService);
+router.get('/dashboard', adminController.dashboardPage);
 
-router.post('/services/delete/:id', requireAuth, adminController.deleteService);
-router.get('/services/view/:id', requireAuth, adminController.viewServicePage);
-router.post('/services/move-up/:id', requireAuth, adminController.moveUpService);
-router.post('/services/move-down/:id', requireAuth, adminController.moveDownService);
-router.post('/services/duplicate/:id', requireAuth, adminController.duplicateService);
-
+router.get('/settings', adminController.settingsPage);
+router.post('/settings', adminController.settingsSave);
 
 module.exports = router;
