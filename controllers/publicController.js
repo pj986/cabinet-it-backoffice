@@ -5,6 +5,7 @@ const MessageModel = require('../models/MessageModel');
    PAGE ACCUEIL
 ========================= */
 exports.home = async (req, res) => {
+
   const content = `
     <h1>Bienvenue chez Cabinet IT</h1>
     <p>Expert en développement web et sécurité informatique.</p>
@@ -19,6 +20,7 @@ exports.home = async (req, res) => {
    PAGE SERVICES
 ========================= */
 exports.services = async (req, res) => {
+
   const content = `
     <h1>Nos services</h1>
     <ul>
@@ -37,6 +39,7 @@ exports.services = async (req, res) => {
    PAGE À PROPOS
 ========================= */
 exports.about = async (req, res) => {
+
   const content = `
     <h1>À propos</h1>
     <p>Cabinet IT accompagne les entreprises dans leur transformation digitale.</p>
@@ -52,11 +55,16 @@ exports.about = async (req, res) => {
 ========================= */
 exports.contact = async (req, res) => {
 
+  const token = req.csrfToken();
+
   const content = `
     <h1>Contact</h1>
 
-    <form method="POST" action="/contact" style="display:flex;flex-direction:column;gap:12px;max-width:400px;">
+    <form method="POST" action="/contact"
+      style="display:flex;flex-direction:column;gap:12px;max-width:400px;">
       
+      <input type="hidden" name="_csrf" value="${token}" />
+
       <label>
         Nom
         <input type="text" name="nom" required>
@@ -84,7 +92,7 @@ exports.contact = async (req, res) => {
 /* =========================
    ENVOI CONTACT (POST)
 ========================= */
-exports.sendContact = (req, res) => {
+exports.sendContact = async (req, res) => {
 
   const { nom, email, message } = req.body;
 
@@ -92,19 +100,31 @@ exports.sendContact = (req, res) => {
     return res.status(400).send('Tous les champs sont obligatoires.');
   }
 
-  MessageModel.create({ nom, email, message }, (err) => {
+  MessageModel.create({ nom, email, message }, async (err) => {
 
     if (err) {
       console.error(err);
       return res.status(500).send('Erreur lors de l\'envoi.');
     }
 
-    // 🔔 Notification temps réel si Socket.io activé
     const io = req.app.get('io');
     if (io) {
       io.emit('newMessage');
     }
 
-    res.redirect('/contact');
+    const content = `
+      <h1>Message envoyé</h1>
+
+      <div style="padding:20px;background:#e8f5e9;border-radius:8px;">
+        <p><strong>Merci ${escapeHtml(nom)} !</strong></p>
+        <p>Votre message a bien été transmis.</p>
+      </div>
+
+      <br>
+      <a href="/contact" class="btn">Envoyer un autre message</a>
+    `;
+
+    const html = await shell('Message envoyé — Cabinet IT', '', content);
+    res.send(html);
   });
 };

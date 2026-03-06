@@ -1,5 +1,3 @@
-const MessageModel = require('../models/MessageModel');
-
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -9,217 +7,184 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-function shell(title, active, content) {
-  return new Promise((resolve) => {
-
-    MessageModel.countUnread((err, unreadCount = 0) => {
-
-      const messagesLink = `
-        <a href="/admin/messages" ${active === 'messages' ? 'class="active"' : ''}>
-          Messages
-          ${
-            unreadCount > 0
-              ? `<span class="notif-badge" id="notifBadge">${unreadCount}</span>`
-              : ''
-          }
-        </a>
-      `;
-
-      resolve(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(title)}</title>
-<link rel="stylesheet" href="/css/style.css">
+function shell(title, active, content, csrfToken = '') {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+    
+  <meta charset="UTF-8">
+  <title>${title}</title>
 <style>
-.topbar{
-  background:#0b0b0b;
-  color:#fff;
-  padding:18px 0;
-}
-.topbar__inner{
-  max-width:1100px;
-  margin:0 auto;
-  padding:0 18px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.nav a{
-  color:#fff;
-  margin-left:18px;
-  text-decoration:none;
-  position:relative;
-}
-.nav a.active{
-  text-decoration:underline;
-}
-.page{
-  max-width:1100px;
-  margin:22px auto;
-  padding:0 18px;
-}
-.card{
-  background:#fff;
-  border-radius:14px;
-  padding:18px;
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  color: white;
 }
 
-/* BADGE */
-.notif-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  background:#ef4444;
-  color:#fff;
-  font-size:12px;
-  font-weight:700;
-  min-width:20px;
-  height:20px;
-  padding:0 6px;
-  border-radius:999px;
-  margin-left:6px;
-  animation:pulse 1.6s infinite;
+/* NAVIGATION */
+nav {
+  background: #111;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
-/* PULSE */
-@keyframes pulse{
-  0%{transform:scale(1)}
-  50%{transform:scale(1.15)}
-  100%{transform:scale(1)}
+nav a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
 }
 
-/* BOUNCE AU CHARGEMENT */
-.bounce{
-  animation:bounce .6s ease;
+nav form {
+  margin-left: auto;
 }
 
-@keyframes bounce{
-  0%{transform:scale(1)}
-  30%{transform:scale(1.4)}
-  60%{transform:scale(.9)}
-  100%{transform:scale(1)}
-}
-  .live-toast{
-  position:fixed;
-  bottom:30px;
-  right:30px;
-  background:#111;
-  color:#fff;
-  padding:14px 18px;
-  border-radius:12px;
-  box-shadow:0 15px 40px rgba(0,0,0,.2);
-  opacity:0;
-  transform:translateY(20px);
-  transition:all .4s ease;
-  z-index:9999;
-}
-.live-toast.show{
-  opacity:1;
-  transform:translateY(0);
+nav button {
+  background: #e53935;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-</style>
-</head>
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket = io();
+main {
+  padding: 40px;
+}
 
-socket.on('newMessage', async () => {
+h1 {
+  margin-top: 0;
+}
 
-  // rafraîchir badge
-  await refreshUnreadCount();
+/* BUTTONS */
+.btn {
+  background: #111;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
 
-  // toast
-  const toast = document.createElement('div');
-  toast.className = 'live-toast';
-  toast.innerHTML = "📩 Nouveau message reçu";
+.btn--secondary {
+  background: #555;
+}
 
-  document.body.appendChild(toast);
+.btn--small {
+  padding: 4px 8px;
+  font-size: 13px;
+}
 
-  setTimeout(() => {
-    toast.classList.add('show');
-  }, 50);
+/* GLASS CARD */
+.card {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
 
-  setTimeout(() => {
-    toast.remove();
-  }, 4000);
-});
-</script>
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+}
 
-<body>
+/* TABLE DARK */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  color: white;
+}
 
-<header class="topbar">
-  <div class="topbar__inner">
-    <div>Cabinet IT — Admin</div>
-    <nav class="nav">
-  ${messagesLink}
-  <a href="/admin/settings" ${active === 'settings' ? 'class="active"' : ''}>Paramètres</a>
-  <a href="/">Site</a>
+th, td {
+  padding: 12px;
+  text-align: left;
+}
 
-  <form method="POST" action="/auth/logout" style="display:inline; margin-left:18px;">
-    <button style="
-      background:#ef4444;
-      color:#fff;
-      border:none;
-      padding:6px 12px;
-      border-radius:6px;
-      cursor:pointer;
-    ">
-      Déconnexion
-    </button>
-  </form>
-</nav>
+thead {
+  background: rgba(255,255,255,0.15);
+}
 
-  </div>
-</header>
+tbody tr {
+  background: rgba(255,255,255,0.05);
+}
 
-<main class="page">
-  <div class="card">
-    ${content}
-  </div>
-</main>
+tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.08);
+}
 
-<script>
-async function refreshUnreadCount(){
-  try{
-    const res = await fetch('/admin/api/unread-count');
-    const data = await res.json();
+/* BADGES */
+.tag {
+  background: #4caf50;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
 
-    let badge = document.getElementById('notifBadge');
+.tag--off {
+  background: #ff9800;
+}
 
-    if(data.count > 0){
-      if(!badge){
-        const link = document.querySelector('.nav a[href="/admin/messages"]');
-        badge = document.createElement('span');
-        badge.id = 'notifBadge';
-        badge.className = 'notif-badge bounce';
-        link.appendChild(badge);
-      }
-      badge.textContent = data.count;
-    } else {
-      if(badge){
-        badge.remove();
-      }
-    }
+/* ANIMATION */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeUp 0.8s ease forwards;
+}
 
-  } catch(e){
-    console.error('Erreur badge:', e);
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
-
-// première mise à jour
-refreshUnreadCount();
-
-// refresh toutes les 10 secondes
-setInterval(refreshUnreadCount, 10000);
-</script>
-
-</body>
-</html>`);
-    });
-
-  });
+  .btn--primary {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: white;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4);
 }
 
-module.exports = { shell, escapeHtml };
+.btn--primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(0, 242, 254, 0.6);
+}
+</style>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+    <body>
+
+      <nav>
+        <a href="/admin/dashboard">Dashboard</a>
+        <a href="/admin/messages">Messages</a>
+        <a href="/admin/services">Services</a>
+
+        <form method="POST" action="/auth/logout" style="display:inline;">
+          <input type="hidden" name="_csrf" value="${csrfToken}" />
+          <button type="submit">Déconnexion</button>
+        </form>
+      </nav>
+
+      <main>
+        ${content}
+      </main>
+
+    </body>
+    </html>
+  `;
+}
+
+module.exports = {
+  shell,
+  escapeHtml
+};
