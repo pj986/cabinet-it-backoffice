@@ -12,41 +12,57 @@ require('./config/db');
 
 const app = express();
 
-/* =========================
-   SÉCURITÉ BAS NIVEAU
-========================= */
+/* =====================================================
+   PRODUCTION SETTINGS
+===================================================== */
+
+// Important pour Render (reverse proxy HTTPS)
+app.set('trust proxy', 1);
 
 // Supprime header X-Powered-By
 app.disable('x-powered-by');
 
 // Logs HTTP
-app.use(morgan('combined'));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-// Rate limit global
+/* =====================================================
+   RATE LIMIT GLOBAL
+===================================================== */
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: process.env.NODE_ENV === 'production' ? 150 : 500,
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use(globalLimiter);
 
-/* =========================
+/* =====================================================
    HELMET (HEADERS SÉCURITÉ)
-========================= */
+===================================================== */
 
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdn.jsdelivr.net"
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'"
+        ],
+        imgSrc: [
+          "'self'",
+          "data:"
+        ],
         connectSrc: [
-  "'self'",
-  "https://cdn.jsdelivr.net"
-],
+          "'self'",
+          "https://cdn.jsdelivr.net"
+        ],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
       },
@@ -54,63 +70,64 @@ app.use(
   })
 );
 
-/* =========================
-   BODY PARSER (AVEC LIMITE)
-========================= */
+/* =====================================================
+   BODY PARSER (LIMITÉ)
+===================================================== */
 
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-/* =========================
+/* =====================================================
    STATIC FILES
-========================= */
+===================================================== */
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-/* =========================
+/* =====================================================
    SESSION (AVANT CSRF)
-========================= */
+===================================================== */
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+    name: 'cabinet_it_session',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production', // HTTPS uniquement en prod
+      sameSite: 'lax',
       maxAge: 30 * 60 * 1000, // 30 minutes
     },
   })
 );
 
-/* =========================
+/* =====================================================
    CSRF (NON GLOBAL)
-========================= */
+===================================================== */
 
 const csrfProtection = csrf();
 app.set('csrfProtection', csrfProtection);
 
-/* =========================
+/* =====================================================
    ROUTES
-========================= */
+===================================================== */
 
 app.use('/', require('./routes/publicRoutes'));
 app.use('/admin', require('./routes/adminRoutes'));
 app.use('/auth', require('./routes/authRoutes'));
 
-/* =========================
+/* =====================================================
    404
-========================= */
+===================================================== */
 
 app.use((req, res) => {
   res.status(404).send('Page introuvable');
 });
 
-/* =========================
-   ERREURS GLOBAL
-========================= */
+/* =====================================================
+   GESTION ERREURS GLOBALES
+===================================================== */
 
 app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
@@ -121,12 +138,12 @@ app.use((err, req, res, next) => {
   res.status(500).send('Erreur serveur');
 });
 
-/* =========================
+/* =====================================================
    SERVER
-========================= */
+===================================================== */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Serveur lancé sur http://localhost:${PORT}`);
+  console.log(`Serveur lancé sur le port ${PORT}`);
 });
