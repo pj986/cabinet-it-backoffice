@@ -186,50 +186,71 @@ exports.loginPage = (req, res) => {
 ========================= */
 exports.login = (req, res) => {
 
-  const { email, password } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
+  const password = req.body.password?.trim();
+
+  console.log("=== LOGIN ATTEMPT ===");
+  console.log("Email reçu :", email);
 
   if (!email || !password) {
+    console.log("Champs manquants");
     return res.redirect('/auth/login?error=1');
   }
 
   AdminModel.findByEmail(email, async (err, admin) => {
 
     if (err) {
-      console.error(err);
+      console.error("Erreur DB :", err);
       return res.status(500).send('Erreur serveur');
     }
 
     if (!admin) {
+      console.log("Aucun admin trouvé avec cet email");
       return res.redirect('/auth/login?error=1');
     }
 
-    const match = await bcrypt.compare(password, admin.password);
+    console.log("Admin trouvé :", admin);
+    console.log("Hash en base :", admin.password);
 
-    if (!match) {
-      return res.redirect('/auth/login?error=1');
-    }
+    try {
+      const match = await bcrypt.compare(password, admin.password);
 
-    req.session.regenerate((err) => {
+      console.log("Mot de passe saisi :", password);
+      console.log("Résultat bcrypt :", match);
 
-      if (err) {
-        console.error(err);
-        return res.status(500).send('Erreur session');
+      if (!match) {
+        console.log("Mot de passe incorrect");
+        return res.redirect('/auth/login?error=1');
       }
 
-      req.session.admin = {
-        id: admin.id,
-        email: admin.email
-      };
+      console.log("Authentification réussie");
 
-      req.session.lastActivity = Date.now();
+      req.session.regenerate((err) => {
 
-      // 🔥 IMPORTANT : on stocke puis on nettoie
-      const redirectTo = req.session.redirectAfterLogin || '/admin/dashboard';
+        if (err) {
+          console.error("Erreur session :", err);
+          return res.status(500).send('Erreur session');
+        }
 
-      req.session.redirectAfterLogin = null;
+        req.session.admin = {
+          id: admin.id,
+          email: admin.email
+        };
 
-      res.redirect(redirectTo);
-    });
+        req.session.lastActivity = Date.now();
+
+        const redirectTo =
+          req.session.redirectAfterLogin || '/admin/dashboard';
+
+        req.session.redirectAfterLogin = null;
+
+        res.redirect(redirectTo);
+      });
+
+    } catch (e) {
+      console.error("Erreur bcrypt :", e);
+      return res.status(500).send('Erreur serveur');
+    }
 
   });
 };
