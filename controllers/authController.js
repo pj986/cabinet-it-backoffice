@@ -189,46 +189,32 @@ exports.login = (req, res) => {
   const email = req.body.email?.trim().toLowerCase();
   const password = req.body.password?.trim();
 
-  console.log("=== LOGIN ATTEMPT ===");
-  console.log("Email reçu :", email);
-
   if (!email || !password) {
-    console.log("Champs manquants");
     return res.redirect('/auth/login?error=1');
   }
 
   AdminModel.findByEmail(email, async (err, admin) => {
 
     if (err) {
-      console.error("Erreur DB :", err);
+      console.error("Login DB error:", err);
       return res.status(500).send('Erreur serveur');
     }
 
     if (!admin) {
-      console.log("Aucun admin trouvé avec cet email");
       return res.redirect('/auth/login?error=1');
     }
-
-    console.log("Admin trouvé :", admin);
-    console.log("Hash en base :", admin.password);
 
     try {
       const match = await bcrypt.compare(password, admin.password);
 
-      console.log("Mot de passe saisi :", password);
-      console.log("Résultat bcrypt :", match);
-
       if (!match) {
-        console.log("Mot de passe incorrect");
         return res.redirect('/auth/login?error=1');
       }
-
-      console.log("Authentification réussie");
 
       req.session.regenerate((err) => {
 
         if (err) {
-          console.error("Erreur session :", err);
+          console.error("Session error:", err);
           return res.status(500).send('Erreur session');
         }
 
@@ -248,7 +234,7 @@ exports.login = (req, res) => {
       });
 
     } catch (e) {
-      console.error("Erreur bcrypt :", e);
+      console.error("Bcrypt error:", e);
       return res.status(500).send('Erreur serveur');
     }
 
